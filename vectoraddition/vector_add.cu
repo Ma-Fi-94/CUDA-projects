@@ -49,10 +49,10 @@ int main() {
     
     // Executing kernel 
     int T = 1024;  // nb. threads per thread block
-    int M = N/T + 1;  // nb. thread blocks
+    int G = N/T + 1;  // nb. thread blocks
     assert (T <= MAX_THREADS_PER_BLOCK);
-    assert (M <= MAX_GRIDSIZE_1D);
-    vector_add<<<M,T>>>(d_out, d_a, d_b, N);
+    assert (G <= MAX_GRIDSIZE_1D);
+    vector_add<<<G,T>>>(d_out, d_a, d_b, N);
     
     
     // Transfer data from device memory back to host memory
