@@ -1,7 +1,7 @@
 // Simulation parameters
-#define XSIZE 1000
-#define YSIZE 1000
-#define MAXSTEP 10000
+#define XSIZE 750
+#define YSIZE 750
+#define MAXSTEP 100
 
 #include <time.h>
 #include <unistd.h>
@@ -46,7 +46,7 @@ int main() {
     srand(time(NULL));
     for (int i = 1; i < XSIZE-1; i++) {
         for (int j = 1; j < YSIZE-1; j++) {
-            lattice[i*YSIZE+j] = rand() % 100 < 33;
+            lattice[i*YSIZE+j] = rand() % 100 < 50;
         }
     }
     
