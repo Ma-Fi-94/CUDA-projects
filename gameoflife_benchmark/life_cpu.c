@@ -1,11 +1,13 @@
 // Simulation parameters
-#define XSIZE 750
-#define YSIZE 750
+#define XSIZE 100
+#define YSIZE 100
 #define MAXSTEP 100
 
 #include <time.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
+
 
 void propagate_and_update(int *lattice, int* lattice_new) {
     for (int x = 0; x < XSIZE; x++) {
@@ -50,7 +52,8 @@ int main() {
         }
     }
     
-    // TODO: Start timer
+    // Start timer
+    clock_t begin = clock();
         
     // Main simulation loop
     for (int i = 0; i <= MAXSTEP; i++) {               
@@ -58,7 +61,10 @@ int main() {
     }
       
       
-   // TODO: Stop timer
+    // Stop timer
+    clock_t end = clock();
+    
+    printf("CPU,%i,%li\n", XSIZE, end-begin);
    
    // Deallocate host memory
    free(lattice);

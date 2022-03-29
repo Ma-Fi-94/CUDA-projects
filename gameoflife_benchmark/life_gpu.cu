@@ -6,8 +6,8 @@
 #define MAX_GRIDSIZE_3D 65535
 
 // Simulation parameters
-#define XSIZE 750
-#define YSIZE 750
+#define XSIZE 100
+#define YSIZE 100
 #define MAXSTEP 100
 
 #include <assert.h>
@@ -61,7 +61,8 @@ int main() {
         }
     }
     
-    // TODO: Start timer
+    // Start timer
+    clock_t begin = clock();
     
     // Allocate device memory
     // This needs a pointer to a pointer, hence we
@@ -87,12 +88,15 @@ int main() {
     }
       
    
-   // Deallocate device memory
-   cudaFree(d_lattice);
+    // Deallocate device memory
+    cudaFree(d_lattice);
    
-   // TODO: Stop timer
+    // Stop timer
+    clock_t end = clock();
+    
+    printf("GPU,%i,%li\n", XSIZE, end-begin);
    
-   // Deallocate host memory
-   free(lattice);
+    // Deallocate host memory
+    free(lattice);
 }
 
