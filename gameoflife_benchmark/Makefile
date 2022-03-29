@@ -1,8 +1,9 @@
 SHELL := /bin/bash
 
 run:
-	nvcc life.cu -o life
-	./life
+	./life_cpu
+	./life_gpu
 
 all:
-	nvcc life.cu -o life
+	nvcc life_gpu.cu -o life_gpu
+	clang life_cpu.c -o life_cpu
