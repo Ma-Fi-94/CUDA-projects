@@ -1,9 +1,9 @@
 run:
-	nvcc life.cu -o life
-	./life
+	nvcc life2.cu -o life2
+	./life2
 
 all:
-	nvcc life.cu -o life
+	nvcc life2.cu -o life2
 
 profile: all
-	sudo $$(which nvprof) ./life
+	sudo $$(which nvprof) ./life2
