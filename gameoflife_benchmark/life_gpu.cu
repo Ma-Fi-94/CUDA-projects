@@ -6,8 +6,6 @@
 #define MAX_GRIDSIZE_3D 65535
 
 // Simulation parameters
-#define XSIZE 100
-#define YSIZE 100
 #define MAXSTEP 100
 
 #include <assert.h>
@@ -16,12 +14,14 @@
 #include <time.h>
 #include <unistd.h>
 
+
 // The "kernel" to run on the device
-__global__ void propagate(int *lattice, int* lattice_new) {
-    int X = threadIdx.x;
-    int Y = blockIdx.x;
-    int i = YSIZE * X + Y;
+__global__ void propagate(int *lattice, int* lattice_new, int XSIZE, int YSIZE) {
+    int i = blockIdx.x;
     lattice_new[i] = lattice[i];
+    
+    int X = i / YSIZE;
+    int Y = i % YSIZE;
 
     if (X > 0 & Y > 0 & X < XSIZE-1 & Y < YSIZE-1) {
         int n = lattice[i-YSIZE-1] + lattice[i-YSIZE] + lattice[i-YSIZE+1] +
@@ -30,25 +30,37 @@ __global__ void propagate(int *lattice, int* lattice_new) {
         
         if (lattice[i] == 0 & n == 3) {
             lattice_new[i] = 1;
-        } else if (lattice[i] == 1 & n < 2) {
+            return;
+        }
+        
+        if (lattice[i] == 1 & n < 2) {
             lattice_new[i] = 0;
-        } else if (lattice[i] == 1 & n > 3) {
+            return;
+        }
+
+        if (lattice[i] == 1 & n > 3) {
             lattice_new[i] = 0;
-        }        
+            return;
+        }
+        return;
     }
+    
+    return;
 }
 
 
 // Another "kernel" to run on the device
 __global__ void update(int *lattice, int* lattice_new) {
-    int X = threadIdx.x;
-    int Y = blockIdx.x;
-    int i = YSIZE * X + Y;
+    int i = blockIdx.x;
     lattice[i] = lattice_new[i];
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
+    assert(argc==3);   
+    int XSIZE = atoi(argv[1]);
+    int YSIZE = atoi(argv[2]);
+    
     // Allocate host memory
     int *lattice;
     lattice = (int*) calloc(XSIZE * YSIZE, sizeof(int));
@@ -76,14 +88,14 @@ int main() {
     cudaMemcpy(d_lattice, lattice, sizeof(int) * XSIZE * YSIZE, cudaMemcpyHostToDevice);
 
     // Preparation and sanity checks for kernel launches
-    int T = XSIZE;  // nb. threads per thread block
-    int G = YSIZE;  // nb. thread blocks
+    int T = 1;  // nb. threads per thread block
+    int G = XSIZE*YSIZE;  // nb. thread blocks
     assert (T <= MAX_THREADS_PER_BLOCK);
     assert (G <= MAX_GRIDSIZE_1D);
     
     // Main simulation loop
     for (int i = 0; i <= MAXSTEP; i++) {               
-        propagate<<<G,T>>>(d_lattice, d_lattice_new);
+        propagate<<<G,T>>>(d_lattice, d_lattice_new, XSIZE, YSIZE);
         update<<<G,T>>>(d_lattice, d_lattice_new);
     }
       
