@@ -1,5 +1,18 @@
 SHELL := /bin/bash
-
+gpu_disentangled:
+	for size in 20000 50000 ; do \
+		./life_gpu_disentangled $$size $$size ; \
+		./life_gpu_disentangled $$size $$size ; \
+		./life_gpu_disentangled $$size $$size ; \
+		./life_gpu_disentangled $$size $$size ; \
+		./life_gpu_disentangled $$size $$size ; \
+		./life_gpu_disentangled $$size $$size ; \
+		./life_gpu_disentangled $$size $$size ; \
+		./life_gpu_disentangled $$size $$size ; \
+		./life_gpu_disentangled $$size $$size ; \
+		./life_gpu_disentangled $$size $$size ; \
+	done
+	
 gpu:
 	for size in 10000 ; do \
 		./life_gpu $$size $$size ; \
@@ -25,4 +38,5 @@ cpu:
 
 all:
 	nvcc life_gpu.cu -o life_gpu
+	nvcc life_gpu_disentangled.cu -o life_gpu_disentangled
 	gcc life_cpu.c -o life_cpu
