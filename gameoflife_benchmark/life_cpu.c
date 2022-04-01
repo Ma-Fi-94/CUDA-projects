@@ -1,15 +1,14 @@
 // Simulation parameters
-#define XSIZE 100
-#define YSIZE 100
 #define MAXSTEP 100
 
 #include <time.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 
-void propagate_and_update(int *lattice, int* lattice_new) {
+void propagate_and_update(int *lattice, int* lattice_new, int XSIZE, int YSIZE) {
     for (int x = 0; x < XSIZE; x++) {
         for (int y = 0; y < YSIZE; y++) { 
             int i = YSIZE * x + y;
@@ -38,7 +37,11 @@ void propagate_and_update(int *lattice, int* lattice_new) {
 
 
 
-int main() {
+int main(int argc, char *argv[]) {
+    assert(argc==3);   
+    int XSIZE = atoi(argv[1]);
+    int YSIZE = atoi(argv[2]);
+    
     // Allocate host memory
     int *lattice, *lattice_new;
     lattice = (int*) calloc(XSIZE * YSIZE, sizeof(int));
@@ -57,7 +60,7 @@ int main() {
         
     // Main simulation loop
     for (int i = 0; i <= MAXSTEP; i++) {               
-        propagate_and_update(lattice, lattice_new);
+        propagate_and_update(lattice, lattice_new, XSIZE, YSIZE);
     }
       
       
