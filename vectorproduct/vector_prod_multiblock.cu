@@ -1,9 +1,4 @@
-// TODO: This is cheating because we manually define
-// how we split the elements across the blocks.
-// This should instead be detected automatically
-// for an arbitrary input length.
-#define T 10
-#define B 10
+#define N (10*1024+5)
 
 #define MAX_THREADS_PER_BLOCK 1024
 #define MAX_GRIDSIZE_1D 2147483647
@@ -16,13 +11,20 @@
 
 // The "kernel" to run on the device
 __global__ void dot (int *a, int *b, int *c) {
-    // Memory shared between all threads of a thread block
-    // TODO: malloc dynamically blockDim.x ints
-    __shared__ int tmp[T];
+    __shared__ int tmp[MAX_THREADS_PER_BLOCK];
        
     // Element-wise parallel multiplication across threads
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    tmp[threadIdx.x] = a[index] * b[index];
+    if (index < N) {
+        tmp[threadIdx.x] = a[index] * b[index];
+    } else {
+        // In the last thread blocks, we might have some
+        // empty threads at the ends.
+        // Thus, we fill the corresponding vector elements
+        // with zero, so that we may safely add up the
+        // complete vector later.
+        tmp[threadIdx.x] = 0;
+    }
     
     // All thread wait here, until all threads reach this line
     __syncthreads();
@@ -42,7 +44,7 @@ __global__ void dot (int *a, int *b, int *c) {
 
 int main() {
     // Memory size per vector
-    int size = T * B * sizeof(int);
+    int size = N * sizeof(int);
     
     // Allocate host memory
     int *a, *b, *c;
@@ -53,7 +55,7 @@ int main() {
     
     // Initialise randomly
     srand(time(NULL));
-    for (int i = 0; i < T*B; i++){
+    for (int i = 0; i < N; i++){
         a[i] = 2; //rand() % 1000;
         b[i] = 3; //rand() % 1000;
     }
@@ -71,8 +73,10 @@ int main() {
     cudaMemcpy(dev_b, b, size, cudaMemcpyHostToDevice);
     
     // Launch the "kernel"
-    int nb_threadblocks = B;
-    int nb_threads_per_block = T;
+    int nb_threads_per_block = MAX_THREADS_PER_BLOCK;
+    int nb_threadblocks = 1+(N / MAX_THREADS_PER_BLOCK);
+    printf("N=%i, thus %i blocks a %i threads.\n", N, nb_threadblocks, nb_threads_per_block);
+    printf("Last thread only computes %i elements\n", N % MAX_THREADS_PER_BLOCK);
     assert (nb_threadblocks <= MAX_GRIDSIZE_1D);
     assert (nb_threads_per_block <= MAX_THREADS_PER_BLOCK);
     dot<<<nb_threadblocks, nb_threads_per_block>>>(dev_a, dev_b, dev_c);
@@ -81,7 +85,8 @@ int main() {
     cudaMemcpy(c, dev_c, sizeof(int), cudaMemcpyDeviceToHost);
     
     // The result
-    printf("Result: %i, should be %i\n", *c, T*B*6);
+    printf("Result: %i, should be %i\n", *c, N*6);
+    assert (*c == N*6);
 
     
     // Free device memory
