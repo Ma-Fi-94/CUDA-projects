@@ -1,4 +1,14 @@
-#define N (100*1024+5)
+/*
+ * fuzzing revealed two problems already
+ *   - wrong datatype used while backcopying results to host
+ *   - dev_c was not set to zero before use
+ *   - For very long vectors (N>1000) relative precision goes down to at worst ~1e-4.
+ *       -     It might be nice to explore this in more detail systematically.
+*/
+
+#define N 500
+#define NB_FUZZES 10
+#define MAX_EPS 1e-3
 
 #include <assert.h>
 #include <stdio.h>
@@ -48,14 +58,6 @@ int main() {
     a = (float*) malloc(size);
     b = (float*) malloc(size);
     c = (float*) malloc(sizeof(float));
-    *c = 0;
-    
-    // Initialise randomly
-    srand(time(NULL));
-    for (int i = 0; i < N; i++){
-        a[i] = 2; //rand() % 1000;
-        b[i] = 3; //rand() % 1000;
-    }
     
     // Allocate device memory
     // This needs a pointer to a pointer, hence we
@@ -65,27 +67,44 @@ int main() {
     cudaMalloc((void**) &dev_b, size);
     cudaMalloc((void**) &dev_c, sizeof(float));
     
-    // Copy to device
-    cudaMemcpy(dev_a, a, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(dev_b, b, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(dev_c, c, size, cudaMemcpyHostToDevice);
+    // Fuzz NB_FUZZES times
+    srand(time(NULL));
+    for (int f = 0; f < NB_FUZZES; f++) {
+        
+        // Initialise randomly
+        for (int i = 0; i < N; i++){
+            a[i] = -5000.0 + (float) (rand() % 10000);
+            b[i] = -5000.0 + (float) (rand() % 10000);
+        }
+        *c = 0;
+        
+        // Copy to device
+        cudaMemcpy(dev_a, a, size, cudaMemcpyHostToDevice);
+        cudaMemcpy(dev_b, b, size, cudaMemcpyHostToDevice);
+        cudaMemcpy(dev_c, c, sizeof(float), cudaMemcpyHostToDevice);
+        
+        // Launch the "kernel"
+        int nb_threads_per_block = MAX_THREADS_PER_BLOCK;
+        int nb_threadblocks = 1+(N / MAX_THREADS_PER_BLOCK);
+        assert (nb_threadblocks <= MAX_GRIDSIZE_1D);
+        assert (nb_threads_per_block <= MAX_THREADS_PER_BLOCK);
+        dot<<<nb_threadblocks, nb_threads_per_block>>>(dev_a, dev_b, dev_c);
+        
+        // Copy back the result to c
+        cudaMemcpy(c, dev_c, sizeof(float), cudaMemcpyDeviceToHost);
+        
+        // Calculate the result on the local machine to compare.
+        // We use integers here to not have any floating point errors.
+        // In this way, we have the exact result and can thus
+        // quantify the floating point error of the GPU.
+        int result = 0;
+        for (int i = 0; i < N; i++) {
+            result += (int) a[i] * (int) b[i];
+        }
+        
+        printf("%d,%i,%f,%f \n", N, result, *c, *c-(float) result);
+    }
     
-    // Launch the "kernel"
-    int nb_threads_per_block = MAX_THREADS_PER_BLOCK;
-    int nb_threadblocks = 1+(N / MAX_THREADS_PER_BLOCK);
-    printf("N=%i, thus %i blocks a %i threads.\n", N, nb_threadblocks, nb_threads_per_block);
-    printf("Last thread only computes %i elements\n", N % MAX_THREADS_PER_BLOCK);
-    assert (nb_threadblocks <= MAX_GRIDSIZE_1D);
-    assert (nb_threads_per_block <= MAX_THREADS_PER_BLOCK);
-    dot<<<nb_threadblocks, nb_threads_per_block>>>(dev_a, dev_b, dev_c);
-    
-    // Copy back
-    cudaMemcpy(c, dev_c, sizeof(float), cudaMemcpyDeviceToHost);
-    
-    // The result
-    printf("Result: %f, should be %i\n", *c, N*6);
-    assert (*c == N*6);
-
     
     // Free device memory
     cudaFree(dev_a);
