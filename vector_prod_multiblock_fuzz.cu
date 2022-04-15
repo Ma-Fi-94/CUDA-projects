@@ -2,11 +2,13 @@
  * fuzzing revealed two problems already
  *   - wrong datatype used while backcopying results to host
  *   - dev_c was not set to zero before use
+ *   - For very long vectors (N>1000) relative precision goes down to at worst ~1e-4.
+ *       -     It might be nice to explore this in more detail systematically.
 */
 
-#define N (500)
+#define N 2000
 #define NB_FUZZES 10000
-#define MAX_EPS 1e-6
+#define MAX_EPS 1e-3
 
 #include <assert.h>
 #include <stdio.h>
@@ -97,8 +99,8 @@ int main() {
             result += a[i]*b[i];
         }
         
-        printf("Iteration %d: Local result %f, CUDA result: %f \n", f, result, *c);
-        assert (abs(result - *c) < MAX_EPS);
+        printf("Iteration %-5d: Local result %-15f, CUDA result: %-15f, Rel. Difference: %-15f \n", f, result, *c, (*c-result)/result);
+        assert (abs(*c-result)/result < MAX_EPS);
     }
     
     
